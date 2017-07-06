@@ -20,7 +20,7 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
   还有一个看不见的 DragLayer，与 Widget 拖动相关的操作都在这个 View 里处理。
 
 
-## Launcher 中重要类
+## Launcher 中重要类概览
 
 * **CellLayout**
   mCountX 和 mCountY 分别表示 “x 方向 icon 的个数” 和 “y 方向 icon 的个数”
@@ -95,10 +95,40 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
   该类有多个子类，譬如 FolderIcon 的 FolderInfo，BubbleTextView 的 ShortcutInfo 等。
 
 
+## Launcher3 的启动流程
+1. LauncherApplication.java 获取 LauncherAppState 实例与应用上下文。
+   LauncherAppState 用于存储全局变量，比如缓存(各种cache)，维护内存数据的类(LauncherModel)，下面是 LauncherAppState 的类结构
+   ```java
+    private final AppFilter mAppFilter;
+    private final BuildInfo mBuildInfo;
+    private final LauncherModel mModel;
+    private final IconCache mIconCache;
+    private WidgetPreviewLoader.CacheDb mWidgetPreviewCacheDb;
+    private static WeakReference<LauncherProvider> sLauncherProvider;
+   ```
+   mAppFilter 用于存储 App 文件夹的一些信息
+   mModel 用于维护 Launcher 在内存中的数据，比如 App 信息列表和 widget 信息列表，同时提供了更新数据库的操作。
+   mIconCache 应用程序 Icon 和 Title 的缓存
+   mWidgetPreviewCacheDb 存储 Widget 预览信息的数据库
+   sLauncherProvider 是 App 和 Widget 的 ContentProvider，用数据库存储信息。
+   LauncherAppState.getInstance() 方法实例化了以上的数据，同时对 Launcher 中使用到的 Receiver 和 Observer 进行了注册。
+
+2. Launcher.java 着重看 onCreate() 方法里的内容
+   ```java
+   mModel.startLoader(true, mWorkspace.getRestorePage()); 
+   ```
+   这句话表示开始加载数据模型了。
+
+
+## Launcher3 的数据加载流程
+
+
+## Launcher3 涉及的关键技术点
+
+
 ## Auto Launcher 对 Launcher3 的修改
 
 * 隐藏 SearchDropTargetBar。可以在 Launcher.xml 里注释掉 layout：
-
   ```xml
   <!--
           <include
@@ -106,9 +136,7 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
               layout="@layout/search_drop_target_bar" />
   -->
   ```
-
   或设置 SearchDropTargetBar 的高度为 0 ：
-
   ```java
   // DeviceProfile.java
   padding.set(desiredWorkspaceLeftRightMarginPx - defaultWidgetPadding.left,
@@ -116,15 +144,21 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
           desiredWorkspaceLeftRightMarginPx - defaultWidgetPadding.right,
           hotseatBarHeightPx + pageIndicatorHeightPx);
   ```
+  注意：如果仅仅是让 Launcher.java 里的 `getQsbBar()` 方法返回 `null`，那么谷歌搜索那一栏虽然看不见但还会占着位置。
 
 * 隐藏了 **Folder** 相关的内容
   一期产品规划里不涉及图标文件夹。
 
+* 隐藏了 **overview_panel** 相关的内容
+  一期产品规划里不涉及 Launcher 长按显示的 overview_panel 界面。
 
-## Launcher 中涉及的关键技术点
+* 隐藏了 **FocusIndicatorView** 相关的内容
+
+* 隐藏了 **FocusIndicatorView** 相关的内容
+
+* 双层结构变单层
+  设置 `LauncherAppState.isDisableAllApps()` 返回 `true`
 
 
-
-## 各应用 Widget 的数据存储与更新
 
 
