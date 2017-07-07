@@ -101,28 +101,74 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
     ```
 
 ## Launcher3 的启动流程
-1. LauncherApplication.java 获取 LauncherAppState 实例与应用上下文。
-   LauncherAppState 用于存储全局变量，比如缓存(各种cache)，维护内存数据的类(LauncherModel)，下面是 LauncherAppState 的类结构
-   ```java
+
+Launcher3 运行时维护着许多信息，而这些信息都需要在开机的时候加载完，下面我们来看一下 Launcher3 是怎样一步一步启动的。
+
+1 **LauncherApplication.java**
+    在启动 Launcher 这个主 Activity 之前先运行 LauncherApplication 里的代码。
+    在 LauncherApplication 里获取 LauncherAppState 实例与应用上下文。
+    LauncherAppState 用于存储全局变量，比如缓存(各种cache)，维护内存数据的类(LauncherModel)，下面是 LauncherAppState 的类结构
+    ```java
     private final AppFilter mAppFilter;
     private final BuildInfo mBuildInfo;
     private final LauncherModel mModel;
     private final IconCache mIconCache;
     private WidgetPreviewLoader.CacheDb mWidgetPreviewCacheDb;
     private static WeakReference<LauncherProvider> sLauncherProvider;
-   ```
-   mAppFilter 用于存储 App 文件夹的一些信息
-   mModel 用于维护 Launcher 在内存中的数据，比如 App 信息列表和 widget 信息列表，同时提供了更新数据库的操作。
-   mIconCache 应用程序 Icon 和 Title 的缓存
-   mWidgetPreviewCacheDb 存储 Widget 预览信息的数据库
-   sLauncherProvider 是 App 和 Widget 的 ContentProvider，用数据库存储信息。
-   LauncherAppState.getInstance() 方法实例化了以上的数据，同时对 Launcher 中使用到的 Receiver 和 Observer 进行了注册。
+    ```
+    mAppFilter 用于存储 App 文件夹的一些信息
+    mModel 用于维护 Launcher 在内存中的数据，比如 App 信息列表和 widget 信息列表，同时提供了更新数据库的操作。
+    mIconCache 应用程序 Icon 和 Title 的缓存
+    mWidgetPreviewCacheDb 存储 Widget 预览信息的数据库
+    sLauncherProvider 是 App 和 Widget 的 ContentProvider，用数据库存储信息。
+    LauncherAppState.getInstance() 方法实例化了以上的数据，同时对 Launcher 中使用到的 Receiver 和 Observer 进行了注册。
+    这里监听的广播有应用的安装、卸载和更新，SD 卡上应用的可用或不可用，地区变化和配置变化等等。接收应用安装更新的广播，都是为了方便实时更新桌面上的图标。
 
-2. Launcher.java 着重看 onCreate() 方法里的内容
-   ```java
-   mModel.startLoader(true, mWorkspace.getRestorePage()); 
-   ```
-   这句话表示开始加载数据模型了。
+2 **Launcher.java**
+    注意：Android 6.0+ 的源码里已经没有 LauncherApplication 了，原先 LauncherApplication 里面的内容放到 Launcher.java 里执行。
+    我们着重看 Launcher.onCreate() 里的内容：
+    ```java
+    mSharedPrefs = getSharedPreferences(LauncherAppState.getSharedPreferencesKey(), Context.MODE_PRIVATE);
+    ```
+    之前我们说过，桌面在第一次启动的时候会有一个指导界面，告诉用户怎么使用，在以后的启动中，就不会再出现了。控制这个逻辑就是通过SharedPreference，他以key-value的形式把信息存储到一个xml文件当中。
+
+    ```java
+    mModel = app.setLauncher(this);
+    ```
+    LauncherModel 的对象，通过 LauncherAppState.setLauncher(..) 方法获得的，在其中执行了 LauncherModel.initialize(..) 方法，他给 LaucherModel 传递了一个CallBacks对象(在Launcher.java中定义)。为什么要传这个对象呢，因为 LauncherModel 主要是负责数据层的东西，界面方面的操作都交给了 Launcher 来做，那当 LauncherModel 需要更新界面的时候怎么操作呢，就是通过调用这些个回调函数来完成的。
+
+    ```java
+    mDragController = new DragController(this);
+    ```
+    mDragController 是用来控制拖拽对象的东西，到后面会和 DragLayer 结合起来。
+
+    ```java
+    mInflater = getLayoutInflater();
+    ```
+    在图标加载的时候，会一个个去生成 BubbleTextView，而这些都是通过 mInflater.inflate(..) 方法从 xml 生成出来的，详情参考 Launcher.creatShortcut 方法。
+
+    ```java
+    mAppWidgetManager = AppWidgetManagerCompat.getInstance(this);
+    mAppWidgetHost = new LauncherAppWidgetHost(this, APPWIDGET_HOST_ID);
+    ```
+    mAppWidgetManager 用来管理小工具，mAppWidgetHost 用来生成小工具的 View 对象并更新。
+
+    ```java
+    setContentView(R.layout.launcher);
+    ```
+    Launcher 在做完一系列初始化操作之后，才进行 `setContentView(R.layout.launcher);`，目的应该是方便界面上的 View 来获取初始化的这些对象。
+
+    ```java
+    setupViews();
+    ```
+    有了界面之后通过 setupViews() 方法把 View 对象和之前初始化过的 DragController 等东西结合起来。
+    跳进函数里会看到一溜 findViewById 用来获取 UI 对象，并通过 setup 方法和 DragController 联系起来，然后设置 onClickListener 和 onLongClickListener。
+
+    ```java
+    mModel.startLoader(true, mWorkspace.getRestorePage());
+    ```
+    这句话表示开始加载数据模型了，接下来整个过程都跳转到 LauncherModel 里面。
+    在这里会读取数据库，确定哪些东西要加载到桌面上，加载的顺序等等，并通过 Launcher里面的 Callbacks 最终把 ItemInfo 显示到 UI 上。
 
 
 ## Auto Launcher 对 Launcher3 的修改
