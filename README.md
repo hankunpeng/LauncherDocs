@@ -104,7 +104,7 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
 
 Launcher3 运行时维护着许多信息，而这些信息都需要在开机的时候加载完，下面我们来看一下 Launcher3 是怎样一步一步启动的。
 
-1 **LauncherApplication.java**
+1. **LauncherApplication.java**
     在启动 Launcher 这个主 Activity 之前先运行 LauncherApplication 里的代码。
     在 LauncherApplication 里获取 LauncherAppState 实例与应用上下文。
     LauncherAppState 用于存储全局变量，比如缓存(各种cache)，维护内存数据的类(LauncherModel)，下面是 LauncherAppState 的类结构
@@ -124,7 +124,7 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
     LauncherAppState.getInstance() 方法实例化了以上的数据，同时对 Launcher 中使用到的 Receiver 和 Observer 进行了注册。
     这里监听的广播有应用的安装、卸载和更新，SD 卡上应用的可用或不可用，地区变化和配置变化等等。接收应用安装更新的广播，都是为了方便实时更新桌面上的图标。
 
-2 **Launcher.java**
+2. **Launcher.java**
     注意：Android 6.0+ 的源码里已经没有 LauncherApplication 了，原先 LauncherApplication 里面的内容放到 Launcher.java 里执行。
     我们着重看 Launcher.onCreate() 里的内容：
     ```java
