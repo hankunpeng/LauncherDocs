@@ -106,6 +106,7 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
 Launcher3 运行时维护着许多信息，而这些信息都需要在开机的时候加载完，下面我们来看一下 Launcher3 是怎样一步一步启动的。
 
 1. **LauncherApplication.java**
+
     在启动 Launcher 这个主 Activity 之前先运行 LauncherApplication 里的代码。
     在 LauncherApplication 里获取 LauncherAppState 实例与应用上下文。
     LauncherAppState 用于存储全局变量，比如缓存(各种cache)，维护内存数据的类(LauncherModel)，下面是 LauncherAppState 的类结构
@@ -126,6 +127,7 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
     这里监听的广播有应用的安装、卸载和更新，SD 卡上应用的可用或不可用，地区变化和配置变化等等。接收应用安装更新的广播，都是为了方便实时更新桌面上的图标。
 
 2. **Launcher.java**
+
     注意：Android 6.0+ 的源码里已经没有 LauncherApplication 了，原先 LauncherApplication 里面的内容放到 Launcher.java 里执行。
     我们着重看 Launcher.onCreate() 里的内容：
     ```java
@@ -172,6 +174,7 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
     在这里会读取数据库，确定哪些东西要加载到桌面上，加载的顺序等等，并通过 Launcher里面的 Callbacks 最终把 ItemInfo 显示到 UI 上。
 
 3. **LauncherModel.java**
+
     Launcher.java - Activity.onCreate() 在接近结尾的地方调用了 mModel 的 startLoader() 方法，把 LoaderTask 对象放到了工作线程中。
 
     这里的LauncherModel.java - startLoader() 里的 sWorker 是一个 Handler，可以传递一个 Runnable 对象，并在相关联的线程中执行。sWorker 对应的线程是sWorkerThread，sWorkerThread 在 LauncherModel 类加载的时候就已经开始运行了。
@@ -189,7 +192,9 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
 
 ## Auto Launcher 对 Launcher3 的修改
 
-* 隐藏 SearchDropTargetBar。可以在 Launcher.xml 里注释掉 layout：
+* 隐藏 SearchDropTargetBar。
+
+  可以在 Launcher.xml 里注释掉 layout：
   ```xml
   <!--
           <include
@@ -208,17 +213,21 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
   注意：如果仅仅是让 Launcher.java 里的 `getQsbBar()` 方法返回 `null`，那么谷歌搜索那一栏虽然看不见但还会占着位置。
 
 * 隐藏了 **Folder** 相关的内容
+
   一期产品规划里不涉及图标文件夹。
 
 * 隐藏了 **overview_panel** 相关的内容
+
   一期产品规划里不涉及 Launcher 长按显示的 overview_panel 界面。
 
 * 隐藏了 **FocusIndicatorView** 相关的内容
 
 * 双层结构变单层
+
   设置 `LauncherAppState.isDisableAllApps()` 返回 `true`
 
 * 增加了最左页相关内容
+
   在 Launcher.java 中找 Launcher.hasCustomContentToLeft() 方法，从字面上理解就是左边是否有自定义内容，之后跟自定义内容相关的方法或者变量的名字基本都跟 ***“custom content”*** 相关。这个方法默认返回 false，需要替换成 true 才能让左屏出来。
 
   左屏出来后是个空屏，接下来向自定义内容中添加 View。添加的方法是 Workspace.addToCustomContentPage(…)，可以传递一个 View 和与左屏相关的回调接口。然后就 OK 了。Launcher.addCustomContentToLeft() 这个方法会在 Launcher.onFinishBindingItems() 中调用到，也就是桌面加载结束的时候加载左屏自定义内容。
