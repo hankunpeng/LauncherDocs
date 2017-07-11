@@ -100,6 +100,7 @@ Launcher 文档，记录一些要点，以便团队成员快速熟悉代码。
     // 上面的 info 其实是个 ShortcutInfo 对象
     ```
 
+
 ## Launcher3 的启动流程
 
 Launcher3 运行时维护着许多信息，而这些信息都需要在开机的时候加载完，下面我们来看一下 Launcher3 是怎样一步一步启动的。
@@ -169,6 +170,21 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
     ```
     这句话表示开始加载数据模型了，接下来整个过程都跳转到 LauncherModel 里面。
     在这里会读取数据库，确定哪些东西要加载到桌面上，加载的顺序等等，并通过 Launcher里面的 Callbacks 最终把 ItemInfo 显示到 UI 上。
+
+3. **LauncherModel.java**
+    Launcher.java - Activity.onCreate() 在接近结尾的地方调用了 mModel 的 startLoader() 方法，把 LoaderTask 对象放到了工作线程中。
+
+    这里的LauncherModel.java - startLoader() 里的 sWorker 是一个 Handler，可以传递一个 Runnable 对象，并在相关联的线程中执行。sWorker 对应的线程是sWorkerThread，sWorkerThread 在 LauncherModel 类加载的时候就已经开始运行了。
+
+    sWorkThread 会执行 LoaderTask 的 run 方法，run 方法里面有 loadAndBindWorkspace 方法，它的功能是先在数据库读取数据，再在界面上显示。
+
+    loadWorkspace 做的事情就是遍历数据库里的每条记录，判断他的类型，生成对应的 ItemInfo 对象（ShortcutInfo，FolderInfo，LauncherAppWidgetInfo）。
+
+    bindWorkspace 里面用一系列 Callback 接口（Launcher.java 实现了该接口）来更新 UI。bindWorkspace 新建了几个对象都是 current*, other* 形式的，这个 current* 代表的是当前屏的 ItemInfo，other* 代表的其他屏的 ItemInfo。为了加载时候不让用户感觉很慢，就先把当前屏的显示出来，再显示其他的。这个显示的工作都交给了 bindWorkspaceItems 方法，bindWorkspaceItems 会分别加载图标，小工具，和文件夹。
+
+    加载图标用过 Callback.bindItems 方法来实现他必须在 UI 层执行，所以在 bindWorkspaceItems 中已经把这个调用给 post 到主线程去了。Callback.bindItems 方法的职责就是生成图标对应的 View，并把它加到 CellLayout 中。产生 View 的动作是在 Launcher.createShortcut 中完成的，他用一个 xml 布局文件生成 BubbleTextView 对象，并调用 BubbleTextView 的 applyFromShortcutInfo 方法设置图片和标题。View 生成好了之后，用 Workspace.addInScreenFromBind 即可显示在 UI 上，这往下就是繁琐的细节了。
+
+    文件夹和小工具的加载思路其实都是差不多的，分别调用了 Callback.bindFolders 和 Callback.bindAppWidgets。当这些 UI 元素都显示完成的时候，桌面也基本上启动完了，开始等待用户操作。
 
 
 ## Auto Launcher 对 Launcher3 的修改
