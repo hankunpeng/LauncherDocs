@@ -219,6 +219,11 @@ Launcher3 运行时维护着许多信息，而这些信息都需要在开机的�
   设置 `LauncherAppState.isDisableAllApps()` 返回 `true`
 
 * 增加了最左页相关内容
+  在 Launcher.java 中找 Launcher.hasCustomContentToLeft() 方法，从字面上理解就是左边是否有自定义内容，之后跟自定义内容相关的方法或者变量的名字基本都跟 ***“custom content”*** 相关。这个方法默认返回 false，需要替换成 true 才能让左屏出来。
 
+  左屏出来后是个空屏，接下来向自定义内容中添加 View。添加的方法是 Workspace.addToCustomContentPage(…)，可以传递一个 View 和与左屏相关的回调接口。然后就 OK 了。Launcher.addCustomContentToLeft() 这个方法会在 Launcher.onFinishBindingItems() 中调用到，也就是桌面加载结束的时候加载左屏自定义内容。
 
+  由此可见，如果你想要在左屏添加地图、天气或车辆控制页面等都是可以的，毕竟传递个 View 进去就行。既然是在 Workspace 上添加一个 View，那么它应该是放在 CellLayout 里面，但是为什么它和其他的 CellLayout 大小不一，而且占据全屏呢。我们找到桌面加载每一屏的代码，在 Launcher.bindScreens() 里面，会在加载完正常的图标屏之后通过  Workspace.createCustomContentPage() 再加载自定义的左屏，然后会发现他给新生成的 CellLayout 的 LayoutParams 新添加了属性值 ***isFullScreenPage = true***，一旦有了这个属性 PagedView(Workspace的父类) 的 onMeasure 和 onLayout 就会对其做特殊处理，保证其占据全屏。
+
+  根据业务需求和开发形式，我们弄了个 Fragment 专门控制左屏的内容和逻辑，道理跟给 Launcher3 左屏添加一个 View 类似，不在赘述。
 
